@@ -4,12 +4,19 @@ import json
 from collections import defaultdict
 from PIL import Image
 import random
+from datetime import datetime
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 
 MEDIA_FOLDER = r'E:\GoogleBackup\Takeout_Merged'
+UPLOAD_FOLDER = os.path.join(MEDIA_FOLDER, 'Uploaded')  # Uploaded 폴더
 ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.mp4', '.mov', '.avi', '.mkv'}
 SCAN_RESULT_FILE = 'media_cache.json'
+
+# Uploaded 폴더 생성
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 def scan_media_files():
     """Scans the media folder and returns a list of dictionaries with file paths and taken times."""
@@ -174,6 +181,71 @@ def delete_file():
 
     except Exception as e:
         print(f"Error deleting file {filename}: {e}")
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    """모바일에서 사진 업로드"""
+    if 'file' not in request.files:
+        return jsonify({'status': 'error', 'message': 'No file provided'}), 400
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+    
+    # 파일 확장자 확인
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in ALLOWED_EXTENSIONS:
+        return jsonify({'status': 'error', 'message': f'File type not allowed. Allowed: {ALLOWED_EXTENSIONS}'}), 400
+    
+    try:
+        # 파일명 안전하게 처리
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
+        filename = timestamp + filename
+        
+        # 업로드 폴더에 저장
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(filepath)
+        
+        # 상대 경로 (MEDIA_FOLDER로부터)
+        relative_path = os.path.relpath(filepath, MEDIA_FOLDER).replace('\\', '/')
+        
+        # 현재 시간을 메타데이터로 생성
+        taken_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # 메타데이터 파일 생성
+        metadata = {
+            'photoTakenTime': {
+                'timestamp': int(datetime.now().timestamp()),
+                'formatted': taken_time
+            }
+        }
+        metadata_path = filepath + '.supplemental-metadata.json'
+        with open(metadata_path, 'w', encoding='utf-8') as f:
+            json.dump(metadata, f, indent=4)
+        
+        # 캐시에 추가
+        global CACHED_FILES
+        CACHED_FILES.append({'path': relative_path, 'taken_time': taken_time})
+        
+        # 정렬 (최신순)
+        CACHED_FILES.sort(key=lambda x: x['taken_time'] or '', reverse=True)
+        
+        # 캐시 파일 업데이트
+        with open(SCAN_RESULT_FILE, 'w', encoding='utf-8') as f:
+            json.dump(CACHED_FILES, f, indent=4)
+        
+        return jsonify({
+            'status': 'success', 
+            'message': f'File uploaded successfully: {filename}',
+            'filename': relative_path
+        }), 200
+    
+    except Exception as e:
+        print(f"Error uploading file: {e}")
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 

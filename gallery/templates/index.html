@@ -5,50 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Photo & Video Gallery</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: sans-serif;
-            margin: 0;
-            padding: 20px;
             background-color: #f0f0f0;
         }
-        h1 {
+        
+        .header {
+            background: white;
+            padding: 20px;
             text-align: center;
-            color: #333;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .upload-section {
+            background: white;
+            padding: 20px;
+            margin: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .upload-button {
+            display: inline-block;
+            background-color: #007AFF;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        
+        .upload-button:hover {
+            background-color: #0051D5;
+        }
+        
+        .upload-button:active {
+            background-color: #003DA1;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .upload-status {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+            font-size: 14px;
+        }
+        
+        .upload-status.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .upload-status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .upload-progress {
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background-color: #007AFF;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .content {
+            padding: 20px;
+        }
+        
         .month-gallery {
             margin-bottom: 40px;
-            text-align: center;
         }
+        
         .month-header {
-            font-size: 24px;
+            font-size: 20px;
             color: #333;
             margin-bottom: 15px;
+            padding: 10px 0;
+            border-bottom: 2px solid #e0e0e0;
         }
+        
         .month-header a {
             text-decoration: none;
             color: inherit;
+            display: block;
         }
+        
         .preview-images-container {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            max-width: 900px; /* Constrain the max width */
-            margin: 15px auto 0; /* Center the container */
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
         }
+        
+        @media (min-width: 640px) {
+            .preview-images-container {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 15px;
+            }
+        }
+        
         .preview-image-link {
             display: block;
-            /* width is now handled by the grid */
             height: auto;
-            aspect-ratio: 4 / 3; /* Maintain a 4:3 aspect ratio */
+            aspect-ratio: 4 / 3;
             border-radius: 8px;
             overflow: hidden;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
+        
         .preview-image-link:hover {
             transform: scale(1.05);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
+        
         .preview-image {
             width: 100%;
             height: 100%;
@@ -57,24 +164,102 @@
     </style>
 </head>
 <body>
-    <h1>My Gallery</h1>
-    {% for month in sorted_months %}
-        <div class="month-gallery">
-            <h2 class="month-header">
-                <a href="{{ url_for('month_view', year_month=month) }}">{{ month }} ({{ files_by_month[month]|length }} items)</a>
-            </h2>
-            {% if month in monthly_previews and monthly_previews[month] %}
-                <div class="preview-images-container">
-                    {% for image in monthly_previews[month] %}
-                        <a href="{{ url_for('month_view', year_month=month) }}" class="preview-image-link">
-                            <img src="{{ url_for('media', filename=image.path) }}" alt="Preview for {{ month }}" class="preview-image">
-                        </a>
-                    {% endfor %}
+    <div class="header">
+        <h1>My Gallery</h1>
+        <div class="upload-section">
+            <button class="upload-button" onclick="document.getElementById('fileInput').click()">
+                📱 Upload Photo or Video
+            </button>
+            <input type="file" id="fileInput" accept="image/*,video/*" onchange="uploadFile(event)">
+            <div class="upload-progress" id="uploadProgress">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
                 </div>
-            {% else %}
-                <p>No images available for this month.</p>
-            {% endif %}
+            </div>
+            <div class="upload-status" id="uploadStatus"></div>
         </div>
-    {% endfor %}
+    </div>
+    
+    <div class="content">
+        {% for month in sorted_months %}
+            <div class="month-gallery">
+                <h2 class="month-header">
+                    <a href="{{ url_for('month_view', year_month=month) }}">{{ month }} ({{ files_by_month[month]|length }} items)</a>
+                </h2>
+                {% if month in monthly_previews and monthly_previews[month] %}
+                    <div class="preview-images-container">
+                        {% for image in monthly_previews[month] %}
+                            <a href="{{ url_for('month_view', year_month=month) }}" class="preview-image-link">
+                                <img src="{{ url_for('media', filename=image.path) }}" alt="Preview for {{ month }}" class="preview-image">
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>No images available for this month.</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+    
+    <script>
+        function uploadFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            const uploadStatus = document.getElementById('uploadStatus');
+            const uploadProgress = document.getElementById('uploadProgress');
+            const progressFill = document.getElementById('progressFill');
+            const uploadButton = document.querySelector('.upload-button');
+            
+            uploadStatus.classList.remove('success', 'error');
+            uploadProgress.style.display = 'block';
+            uploadButton.disabled = true;
+            progressFill.style.width = '0%';
+            
+            const xhr = new XMLHttpRequest();
+            
+            // 업로드 진행 상황
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percentComplete = (e.loaded / e.total) * 100;
+                    progressFill.style.width = percentComplete + '%';
+                }
+            });
+            
+            // 완료
+            xhr.addEventListener('load', () => {
+                uploadButton.disabled = false;
+                
+                if (xhr.status === 200) {
+                    const response = JSON.parse(xhr.responseText);
+                    uploadStatus.textContent = response.message;
+                    uploadStatus.classList.add('success');
+                    document.getElementById('fileInput').value = '';
+                    
+                    // 1초 후 페이지 새로고침
+                    setTimeout(() => location.reload(), 1500);
+                } else {
+                    const response = JSON.parse(xhr.responseText);
+                    uploadStatus.textContent = '❌ ' + (response.message || 'Upload failed');
+                    uploadStatus.classList.add('error');
+                }
+                
+                progressFill.style.width = '100%';
+            });
+            
+            // 에러
+            xhr.addEventListener('error', () => {
+                uploadButton.disabled = false;
+                uploadStatus.textContent = '❌ Network error occurred';
+                uploadStatus.classList.add('error');
+            });
+            
+            xhr.open('POST', '/upload', true);
+            xhr.send(formData);
+        }
+    </script>
 </body>
 </html>
