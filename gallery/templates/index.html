@@ -38,6 +38,32 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .people-menu {
+            margin-top: 12px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            font-size: 14px;
+        }
+        .people-menu a, .people-menu label {
+            color: #007AFF;
+            text-decoration: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            background: #f7f9fc;
+            border: 1px solid #e6eefb;
+            cursor: pointer;
+        }
+        .people-menu a:hover, .people-menu label:hover {
+            background: #e9f2ff;
+        }
+        .people-menu a.active, .people-menu label.active {
+            background-color: #007AFF;
+            color: white;
+            border-color: #007AFF;
+        }
         
         .upload-button {
             display: inline-block;
@@ -170,13 +196,32 @@
             <button class="upload-button" onclick="document.getElementById('fileInput').click()">
                 📱 Upload Photo or Video
             </button>
-            <input type="file" id="fileInput" accept="image/*,video/*" onchange="uploadFile(event)">
+            <input type="file" id="fileInput" accept="image/*,video/*" multiple onchange="uploadFile(event)">
+            <a href="/auto_upload" class="upload-button" style="margin-top: 10px; text-decoration: none; text-align: center;">
+                🔄 Auto Upload
+            </a>
             <div class="upload-progress" id="uploadProgress">
                 <div class="progress-bar">
                     <div class="progress-fill" id="progressFill"></div>
                 </div>
             </div>
             <div class="upload-status" id="uploadStatus"></div>
+        </div>
+        <div class="people-menu">
+            <strong>People:</strong>
+            <form action="/" method="get" style="display: contents;">
+                {% for person in people %}
+                    <label class="{% if person in selected_people %}active{% endif %}">
+                        <input type="checkbox" name="person" value="{{ person }}" 
+                               {% if person in selected_people %}checked{% endif %}
+                               onchange="this.form.submit()" style="display:none;">
+                        {{ person }}
+                    </label>
+                {% endfor %}
+            </form>
+            {% if selected_people %}
+                <a href="{{ url_for('index') }}">Show All</a>
+            {% endif %}
         </div>
     </div>
     
@@ -203,11 +248,13 @@
     
     <script>
         function uploadFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
             
             const formData = new FormData();
-            formData.append('file', file);
+            for (let i = 0; i < files.length; i++) {
+                formData.append('file', files[i]);
+            }
             
             const uploadStatus = document.getElementById('uploadStatus');
             const uploadProgress = document.getElementById('uploadProgress');
@@ -235,7 +282,7 @@
                 
                 if (xhr.status === 200) {
                     const response = JSON.parse(xhr.responseText);
-                    uploadStatus.textContent = response.message;
+                    uploadStatus.textContent = response.message || (files.length + ' files uploaded');
                     uploadStatus.classList.add('success');
                     document.getElementById('fileInput').value = '';
                     

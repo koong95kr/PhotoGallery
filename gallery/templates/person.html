@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photos of {{ person }}</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 10px;
+            color: #007AFF;
+            text-decoration: none;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        .gallery img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .gallery img:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/" class="back-link">← Back to Gallery</a>
+        <h1>Photos of {{ person }}</h1>
+        <p>{{ files|length }} photos found</p>
+    </div>
+    <div class="gallery">
+        {% for file in files %}
+            <a href="{{ url_for('media', filename=file.path) }}" target="_blank">
+                <img src="{{ url_for('media', filename=file.path) }}" loading="lazy" alt="Photo of {{ person }}">
+            </a>
+        {% endfor %}
+    </div>
+</body>
+</html>
